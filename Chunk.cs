@@ -8,7 +8,7 @@ using UnityEngine;
 [System.Serializable]
 public class Chunk
 {
-    public  ChunkData       chunkData { get; private set; }
+    public ChunkData        chunkData { get; private set; }
 
     // # 메쉬 오브젝트 관련
     private GameObject      chunkObject;
@@ -17,16 +17,15 @@ public class Chunk
     private MeshCollider    meshCollider;
 
     // # 청크 크기 관련
-    private int             chunkMaxWidth  = ChunkConfig.ChunkWidthValue  - 1;
+    private int             chunkMaxWidth  = ChunkConfig.ChunkWidthValue - 1;
     private int             chunkMaxLength = ChunkConfig.ChunkLengthValue - 1;
     private int             chunkMaxHeight = ChunkConfig.ChunkHeightValue - 1;
 
-    private Map             map = null;
+    private Map map = null;
 
     public Chunk(Vector2Int coord, Map map, MapSettingManager mapSettingManager, ChunkType chunkType)
     {
         chunkData       = new ChunkData(coord, chunkType);
-
         this.map        = map;
         chunkObject     = mapSettingManager.InstantiateChunk();
         chunkObject.tag = "Ground";
@@ -36,7 +35,7 @@ public class Chunk
         meshCollider    = chunkObject.GetComponent<MeshCollider>();
 
         chunkObject.transform.localPosition = new Vector3(coord.x * ChunkConfig.ChunkWidthValue, 0.0f, coord.y * ChunkConfig.ChunkLengthValue);
-        chunkObject.name                    = $"Chunk {coord.x}.{coord.y}";
+        chunkObject.name = $"Chunk {coord.x}.{coord.y}";
 
         switch (chunkType)
         {
@@ -68,7 +67,7 @@ public class Chunk
         set => chunkObject.SetActive(value);
     }
 
-    private Vector3 ToWorldPos(in Vector3 pos)      => Position + pos;
+    private Vector3 ToWorldPos(in Vector3 pos) => Position + pos;
     private Vector3 ToWorldPos(int x, int y, int z) => Position + new Vector3(x, y, z);
 
     private void PopulateBlockHeight()
@@ -129,8 +128,8 @@ public class Chunk
         int globalY = Mathf.FloorToInt(pos.y);
         int globalZ = Mathf.FloorToInt(pos.z);
 
-        int localX = globalX - Mathf.FloorToInt(chunkObject.transform.position.x);
-        int localZ = globalZ - Mathf.FloorToInt(chunkObject.transform.position.z);
+        int localX = globalX - Mathf.FloorToInt(Position.x);
+        int localZ = globalZ - Mathf.FloorToInt(Position.z);
 
         chunkData.chunkBlocks[localX, globalY, localZ] = newBlockData;
 
@@ -153,7 +152,9 @@ public class Chunk
                 if (!map.IsVoxelInMap(pos)) return;
 
                 Chunk tempChunk = map.GetChunkFromPosition(currentVoxel + Position, ChunkType.Ground);
-                tempChunk.UpdateChunk();
+
+                if(tempChunk != null)
+                    tempChunk.UpdateChunk();
             }
         }
     }
@@ -173,8 +174,8 @@ public class Chunk
     {
         return chunkData.type switch
         {
-            ChunkType.Ground => blockData.isSoild,
-            ChunkType.Water  => !blockData.isSoild,
+            ChunkType.Ground => blockData.isSolid,
+            ChunkType.Water => !blockData.isSolid,
             _ => false
         };
     }
@@ -195,14 +196,14 @@ public class Chunk
             if (!map.IsVoxelInMap(globalPos))
                 return false;
 
-            int localX = Mathf.FloorToInt(globalPos.x) % ChunkConfig.ChunkWidthValue;
+            int localX = Utils.PositiveMod(Mathf.FloorToInt(globalPos.x), ChunkConfig.ChunkWidthValue);
             int localY = Mathf.FloorToInt(globalPos.y);
-            int localZ = Mathf.FloorToInt(globalPos.z) % ChunkConfig.ChunkLengthValue;
+            int localZ = Utils.PositiveMod(Mathf.FloorToInt(globalPos.z), ChunkConfig.ChunkLengthValue);
 
-            Chunk chunk = map.GetChunkFromPosition(globalPos, ChunkType.Ground);
+            Chunk chunk = map.GetChunkFromPosition(globalPos, chunkData.type);
             if (chunk == null) return false;
 
-            return chunk.chunkData.chunkBlocks[localX, localY, localZ].isSoild;
+            return chunk.chunkData.chunkBlocks[localX, localY, localZ].isSolid;
         }
 
         return chunkData.chunkBlocks[x, y, z].id != BlockConstants.Air && IsRenderBlock(chunkData.chunkBlocks[x, y, z]);
